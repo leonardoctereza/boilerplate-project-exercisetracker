@@ -35,13 +35,16 @@ app.post('/api/users/:id/exercises',async function (req,res) {
   let userId = req.params.id;
   let userExercises = {
     description: req.body.description,
-    duration: req.body.duration,
-    date: req.body.date || new Date()
+    duration: parseInt(req.body.duration),
+    date: req.body.date? new Date(req.body.date).toDateString():new Date().toDateString()
   };
   let userUpdated = await UserModel.findOneAndUpdate({_id:userId},
     {$push:{exercises:userExercises}},
     {new: true});
-  res.json(userUpdated);
+  
+  res.json({_id:userUpdated._id,
+            username:userUpdated.username,
+            ...userExercises});
 });
 
 app.get('/api/users/:id/logs',async function (req,res) {
@@ -50,12 +53,15 @@ app.get('/api/users/:id/logs',async function (req,res) {
   let userInfo;
   let log;
   userInfo = await UserModel.findById({_id:userId});
-  if(filters.from && filters.to && filters.limit){
-    log = userInfo.exercises.filter( (e,index) =>{
-      if(index<filters.limit){
-        return e.date >= new Date(filters.from) && e.date<= new Date(filters.to);
-      }
-    });
+  if(filters.limit || filters.from){
+    if(filters.limit){
+      log = userInfo.exercises.slice(0,filters.limit);
+    }
+    else{
+      log = userInfo.exercises.filter( (e) =>{
+        return new Date(e.date) >= new Date(filters.from) && new Date(e.date)<= new Date(filters.to);
+      });
+    }
   }else{
     log = userInfo.exercises;
   }
